@@ -1,0 +1,40 @@
+name: Release
+
+# main への push（= 本番リリース）ごとに、JST の日付タグ YYYY-MM-DD を打ち、
+# 種別ラベルごとに見出しを分けたリリースノート（.github/release.yml）で GitHub Release を作る。
+# 同じ日に 2 回目以降のリリースがあった場合は YYYY-MM-DD.2, YYYY-MM-DD.3 ... とする。
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Create date tag and release
+        run: |
+          set -euo pipefail
+          base="$(TZ=Asia/Tokyo date +%F)"
+          tag="$base"
+          n=2
+          while gh api "repos/${GH_REPO}/git/ref/tags/${tag}" --silent 2>/dev/null; do
+            tag="${base}.${n}"
+            n=$((n + 1))
+          done
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --generate-notes \
+            --latest
+          echo "Released ${tag}" >> "$GITHUB_STEP_SUMMARY"

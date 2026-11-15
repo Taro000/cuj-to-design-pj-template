@@ -1,0 +1,125 @@
+name: Claude Code Cloud
+
+# 「AI's Turn」「Human's Turn」ラベルは手番の目印で、付けても AI は起動しない。
+# 人間からの依頼は Slack の @Claude メンションで受ける（.claude/rules/ai-workflow.md）。
+#
+# このワークフローの役割:
+#   - exclusive-turn: 「AI's Turn」と「Human's Turn」を排他にする
+#   - fire: Dependabot が PR を作成したら、Claude Code の Routine（API トリガー）を発火して
+#     クラウドセッションを開始し、PR に「AI's Turn」を付ける（mode: dependabot）
+#
+# 必要な Repository secrets（未設定の間は警告を出してスキップする）:
+#   CLAUDE_ROUTINE_FIRE_URL  https://api.anthropic.com/v1/claude_code/routines/trig_xxx/fire
+#   CLAUDE_ROUTINE_TOKEN     Routine の API トークン
+#
+# Dependabot の PR でも Actions の secrets を使えるよう pull_request_target を使う。
+# PR のコードは checkout も実行もしないこと。
+
+on:
+  issues:
+    types: [labeled]
+  pull_request_target:
+    types: [labeled, opened, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+env:
+  AI_LABEL: "AI's Turn"
+  HUMAN_LABEL: "Human's Turn"
+  ROUTINE_BETA: experimental-cc-routine-2026-04-01
+
+jobs:
+  exclusive-turn:
+    if: >-
+      github.event.action == 'labeled' &&
+      (github.event.label.name == 'AI''s Turn' || github.event.label.name == 'Human''s Turn')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove the opposite turn label
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { AI_LABEL, HUMAN_LABEL } = process.env;
+            const item = context.payload.pull_request ?? context.payload.issue;
+            const other = context.payload.label.name === AI_LABEL ? HUMAN_LABEL : AI_LABEL;
+            if (item.labels.some((l) => l.name === other)) {
+              await github.rest.issues.removeLabel({ ...context.repo, issue_number: item.number, name: other });
+            }
+
+  fire:
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      (github.event.action == 'opened' || github.event.action == 'reopened') &&
+      github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: claude-cloud-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Start Claude Code cloud session
+        uses: actions/github-script@v9
+        env:
+          FIRE_URL: ${{ secrets.CLAUDE_ROUTINE_FIRE_URL }}
+          FIRE_TOKEN: ${{ secrets.CLAUDE_ROUTINE_TOKEN }}
+        with:
+          script: |
+            const { FIRE_URL, FIRE_TOKEN, ROUTINE_BETA, AI_LABEL, HUMAN_LABEL } = process.env;
+            const pr = context.payload.pull_request;
+
+            if (!FIRE_URL || !FIRE_TOKEN) {
+              core.warning('CLAUDE_ROUTINE_FIRE_URL / CLAUDE_ROUTINE_TOKEN が未設定のため、Claude Code セッションを開始しません。');
+              return;
+            }
+
+            // GITHUB_TOKEN によるラベル操作では exclusive-turn ジョブが起動しないので、ここで排他にする
+            const current = pr.labels.map((l) => l.name);
+            if (!current.includes(AI_LABEL)) {
+              await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: [AI_LABEL] });
+            }
+            if (current.includes(HUMAN_LABEL)) {
+              await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name: HUMAN_LABEL });
+            }
+            const labels = [...new Set([...current.filter((n) => n !== HUMAN_LABEL), AI_LABEL])];
+
+            const text = [
+              'mode: dependabot',
+              `repository: ${context.repo.owner}/${context.repo.repo}`,
+              'kind: pull_request',
+              `number: ${pr.number}`,
+              `url: ${pr.html_url}`,
+              `title: ${pr.title}`,
+              `labels: ${labels.join(', ')}`,
+              `head_branch: ${pr.head.ref}`,
+              `base_branch: ${pr.base.ref}`,
+              `triggered_by: ${context.actor}`,
+              '',
+              '--- body ---',
+              (pr.body ?? '').slice(0, 20000),
+            ].join('\n');
+
+            const res = await fetch(FIRE_URL, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${FIRE_TOKEN}`,
+                'anthropic-beta': ROUTINE_BETA,
+                'anthropic-version': '2023-06-01',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ text }),
+            });
+            const raw = await res.text();
+            if (!res.ok) {
+              core.setFailed(`Routine の起動に失敗しました: HTTP ${res.status} ${raw}`);
+              return;
+            }
+
+            const { claude_code_session_url: sessionUrl } = JSON.parse(raw);
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: pr.number,
+              body: `🤖 Claude Code のセッションを開始しました（mode: \`dependabot\`）\n${sessionUrl}`,
+            });
+            await core.summary.addRaw(`Session: ${sessionUrl}`).write();

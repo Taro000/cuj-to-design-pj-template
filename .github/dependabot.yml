@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # パッケージマネージャーを導入したら、ここに ecosystem を追加する
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: stage
+    schedule:
+      interval: weekly
+      timezone: Asia/Tokyo
+    labels: [chore]
+    commit-message:
+      prefix: chore

@@ -1,0 +1,16 @@
+# 自動生成リリースノートの見出し（種別ラベルごと）
+# https://docs.github.com/repositories/releasing-projects-on-github/automatically-generated-release-notes
+changelog:
+  categories:
+    - title: ✨ 機能への変更 (feature)
+      labels: [feature]
+    - title: 🧹 機能に影響のない変更 (chore)
+      labels: [chore]
+    - title: 🐛 不具合の修正 (fix)
+      labels: [fix]
+    - title: 🚑 緊急修正 (hotfix)
+      labels: [hotfix]
+    - title: 🔖 リリース (release)
+      labels: [release]
+    - title: 📦 種別ラベルなし
+      labels: ['*']

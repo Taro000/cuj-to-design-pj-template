@@ -1,0 +1,9 @@
+#!/bin/sh
+# 保護ブランチに切り替えたとき、取り込み済みのブランチを削除する。
+# 引数: $1=前の HEAD, $2=新しい HEAD, $3=ブランチの切り替えなら 1
+. "$(dirname "$0")/lib/protected.sh"
+
+[ "$3" = 1 ] || exit 0
+branch=$(git symbolic-ref --short -q HEAD) || exit 0
+is_protected "$branch" || exit 0
+"$(dirname "$0")/lib/prune-merged.sh" || true

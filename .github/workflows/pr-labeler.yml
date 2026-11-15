@@ -1,0 +1,106 @@
+name: PR Labeler
+
+# - label: ブランチ名から種別ラベル（feature / chore / fix / hotfix / release）を付け、
+#   種別ラベルがちょうど 1 つ付いているかを検査する。
+# - size: 変更量（追加と削除の合計行数。lockfile は数えない）からサイズラベルを 1 つだけ付ける。
+#   L: 500 行以上 / M: 200 行以上 / S: それ未満
+# pull_request_target を使うが PR のコードは checkout しない（設定は base ブランチから読む）。
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label by branch name
+        uses: actions/labeler@v7
+        with:
+          sync-labels: false
+
+      - name: Verify type label
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const TYPES = ['feature', 'chore', 'fix', 'hotfix', 'release'];
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            const found = labels.map((l) => l.name).filter((n) => TYPES.includes(n));
+            if (found.length !== 1) {
+              core.setFailed(
+                `種別ラベル（${TYPES.join(' / ')}）はちょうど 1 つ必要です。現在: ${found.join(', ') || 'なし'}。` +
+                  'ブランチ名を <種別>/<説明> にするか、ラベルを手動で付け直してください。',
+              );
+            }
+
+  # 冪等なので全イベントで実行する。opened などに絞ると、同時に届いた labeled の
+  # 実行に cancel-in-progress で打ち消され、サイズが付かないままになることがある。
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label by change size
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // 閾値の大きい順に並べる（最初に満たしたものを採用）
+            const SIZES = [
+              { name: 'L', min: 500 },
+              { name: 'M', min: 200 },
+              { name: 'S', min: 0 },
+            ];
+            // 自動生成されるので数えない lockfile（どのディレクトリにあっても対象）
+            const LOCKFILES = new Set([
+              'package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml',
+              'bun.lock', 'bun.lockb', 'deno.lock',
+              'Gemfile.lock', 'Pipfile.lock', 'poetry.lock', 'uv.lock', 'pdm.lock',
+              'Cargo.lock', 'go.sum', 'composer.lock', 'pubspec.lock', 'Podfile.lock',
+              'Package.resolved', 'mix.lock', 'flake.lock', 'gradle.lockfile', 'packages.lock.json',
+            ]);
+            const isLockfile = (path) => LOCKFILES.has(path.split('/').pop());
+
+            // payload の値は古いことがあるので取り直す
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            let additions = 0;
+            let deletions = 0;
+            const skipped = [];
+            for (const f of files) {
+              if (isLockfile(f.filename)) {
+                skipped.push(f.filename);
+                continue;
+              }
+              additions += f.additions;
+              deletions += f.deletions;
+            }
+            const lines = additions + deletions;
+            const size = SIZES.find((s) => lines >= s.min).name;
+
+            const current = pr.labels.map((l) => l.name);
+            for (const { name } of SIZES) {
+              if (name !== size && current.includes(name)) {
+                await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name });
+              }
+            }
+            if (!current.includes(size)) {
+              await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: [size] });
+            }
+            core.info(`${lines} 行（+${additions} / -${deletions}）→ ${size}`);
+            if (skipped.length) core.info(`lockfile として除外: ${skipped.join(', ')}`);

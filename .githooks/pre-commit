@@ -1,0 +1,9 @@
+#!/bin/sh
+# 保護ブランチ上での直接コミットを拒否する。
+. "$(dirname "$0")/lib/protected.sh"
+
+branch=$(git symbolic-ref --short -q HEAD) || exit 0
+if is_protected "$branch"; then
+  echo "✋ $branch への直接コミットは禁止されています。作業ブランチ（<種別>/<説明>）を切ってください。" >&2
+  exit 1
+fi

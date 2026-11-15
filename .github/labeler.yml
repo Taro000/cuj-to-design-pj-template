@@ -1,0 +1,19 @@
+# ブランチ名 → 種別ラベル の対応表（.github/workflows/pr-labeler.yml が使う）
+# トップレベルに並べた条件は AND、同じ条件内のリストは OR で評価される。
+
+feature:
+  - head-branch: ['^feature/']
+
+chore:
+  - head-branch: ['^chore/', '^dependabot/']
+
+fix:
+  - head-branch: ['^fix/']
+
+hotfix:
+  - head-branch: ['^hotfix/']
+
+# stage → main のリリース PR
+release:
+  - head-branch: ['^stage$', '^release/']
+  - base-branch: ['^main$']

@@ -1,0 +1,17 @@
+#!/bin/sh
+# 保護ブランチへの push（作成・更新・削除・force push）をすべて拒否する。
+# 保護ブランチは GitHub 上で PR をマージしたときにだけ更新される。
+. "$(dirname "$0")/lib/protected.sh"
+
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/*) branch=${remote_ref#refs/heads/} ;;
+    *) continue ;;
+  esac
+  if is_protected "$branch"; then
+    echo "✋ $branch への直接 push は禁止されています（force push・削除を含む）。PR を作ってマージしてください。" >&2
+    status=1
+  fi
+done
+exit $status

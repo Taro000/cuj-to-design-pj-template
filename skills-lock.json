@@ -1,0 +1,83 @@
+{
+  "version": 2,
+  "skills": {
+    "architecture-drivers-to-architecture": {
+      "source": "Taro000/req-to-design",
+      "sourceType": "github",
+      "skillPath": "skills/architecture-drivers-to-architecture/SKILL.md",
+      "computedHash": "332a07a734d3716efa1fa436a676631b34d0d525e39434123571d343dee715e5"
+    },
+    "architecture-to-high-level-design": {
+      "source": "Taro000/req-to-design",
+      "sourceType": "github",
+      "skillPath": "skills/architecture-to-high-level-design/SKILL.md",
+      "computedHash": "b421960cfa68176c170e06e5f4be67f3de296e18a2e80097f3d4634e879f0e25"
+    },
+    "architecture-to-technical-policy": {
+      "source": "Taro000/req-to-design",
+      "sourceType": "github",
+      "skillPath": "skills/architecture-to-technical-policy/SKILL.md",
+      "computedHash": "4f9a233d11ca4cdf5517d7a5783b51b78099ea4a392c74ff7081110c0206d239"
+    },
+    "cuj-to-quality-in-use": {
+      "source": "Taro000/cuj-to-slo",
+      "sourceType": "github",
+      "skillPath": "skills/cuj-to-quality-in-use/SKILL.md",
+      "computedHash": "64b5d34cd33e4d3e4bd587af205f0b89132a734900eee5d2a6b5578925635ac4"
+    },
+    "design-chain": {
+      "source": "Taro000/req-to-design",
+      "sourceType": "github",
+      "skillPath": "skills/design-chain/SKILL.md",
+      "computedHash": "f07926411a08728eb27b25d153f235e42638bdbbfbeae8fcb4977997e06f4e8d"
+    },
+    "design-review": {
+      "source": "Taro000/req-to-design",
+      "sourceType": "github",
+      "skillPath": "skills/design-review/SKILL.md",
+      "computedHash": "3d9e35be6d87d7968511c4300678e90dd7c5d877bed718a442b61ced1309af0c"
+    },
+    "functional-requirements-to-product-quality": {
+      "source": "Taro000/cuj-to-slo",
+      "sourceType": "github",
+      "skillPath": "skills/functional-requirements-to-product-quality/SKILL.md",
+      "computedHash": "ef99029b06a6eb1a7e7b19d822cb68a827d77bc952b8fee2682240af4ceef1d6"
+    },
+    "high-level-design-to-detailed-design": {
+      "source": "Taro000/req-to-design",
+      "sourceType": "github",
+      "skillPath": "skills/high-level-design-to-detailed-design/SKILL.md",
+      "computedHash": "eac51e973084a0c9bfce7d010b563376b7206be227dc5e1fb59d440f014bdc91"
+    },
+    "modern-web-guidance": {
+      "source": "GoogleChrome/modern-web-guidance",
+      "sourceType": "github",
+      "skillPath": "skills/modern-web-guidance/SKILL.md",
+      "computedHash": "9e69ce00dc314b64f6664031b70295ea46c7de93ac682c624808df6e48e08b66"
+    },
+    "product-quality-to-slo": {
+      "source": "Taro000/cuj-to-slo",
+      "sourceType": "github",
+      "skillPath": "skills/product-quality-to-slo/SKILL.md",
+      "computedHash": "379f59a6c0e501d24cc8b874bf5a5eb25a0f242c93bc8e477e6cef3f607c17dd"
+    },
+    "quality-in-use-to-functional-requirements": {
+      "source": "Taro000/cuj-to-slo",
+      "sourceType": "github",
+      "skillPath": "skills/quality-in-use-to-functional-requirements/SKILL.md",
+      "computedHash": "37657bcac7c5d072da320c49486b8d25fa85dd948757bf78b6cd03b94b0c6172"
+    },
+    "quality-summary-html": {
+      "source": "Taro000/chain-summary-html",
+      "sourceType": "github",
+      "skillPath": "skills/quality-summary-html/SKILL.md",
+      "computedHash": "b1336ee17146ced57080aae7c6b765c7c6149ff5c4b83a18bf693f9b20400b5d"
+    },
+    "requirements-to-architecture-drivers": {
+      "source": "Taro000/req-to-design",
+      "sourceType": "github",
+      "skillPath": "skills/requirements-to-architecture-drivers/SKILL.md",
+      "computedHash": "7981a549037a8c30e0d44361e182b288e946ff0b6cead4c58d36404c9dbe0d72"
+    }
+  }
+}
