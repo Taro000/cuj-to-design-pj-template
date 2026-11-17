@@ -2,7 +2,7 @@
 # テンプレート（cuj-to-design-pj-template）から作ったリポジトリを初期化する。
 # clone したら一度実行する。何度実行してもよい。
 #   1. git hooks を有効にする
-#   2. ラベルを作る（既にあれば色と説明を揃える）
+#   2. ラベルを作る（既にあれば色と説明を揃える）。初期化の前なら GitHub の既定ラベルを消す
 #   3. main が無ければ stage から作る。既定ブランチを stage にし、マージ済みブランチの自動削除を有効にする
 #   4. ファイルにリポジトリ名を埋め、README を書き換えて、stage 向けの PR を作る（テンプレート自身では行わない）
 # 必要なもの: git、gh（gh auth login 済み）
@@ -22,6 +22,19 @@ repo=$(gh repo view --json nameWithOwner -q .nameWithOwner) ||
 name=${repo#*/}
 is_template=$(gh repo view "$repo" --json isTemplate -q .isTemplate)
 echo "対象: $repo"
+
+# リポジトリ名を埋めるファイル。{{REPO}} は owner/name、{{REPO_NAME}} は name に置き換える
+files="CLAUDE.md .claude/rules/ai-workflow.md .github/claude-routine-prompt.md"
+branch=chore/init-from-template
+title="chore: テンプレートから初期化する"
+
+# 初期化の PR がマージされるまで、origin/stage にはプレースホルダーとテンプレートの README が残っている
+# （テンプレート自身では常に残っている）
+git fetch -q origin stage
+needs_init=false
+# shellcheck disable=SC2086
+git grep -qF '{{REPO' origin/stage -- $files && needs_init=true
+git show origin/stage:README.md | grep -q '^<!-- template-readme' && needs_init=true
 
 echo "== git hooks"
 sh scripts/setup-git-hooks.sh
@@ -49,6 +62,17 @@ S|C5DEF5|[サイズ] 200行未満の変更
 M|6CA0DC|[サイズ] 200行以上の変更
 L|1F4E9C|[サイズ] 500行以上の変更
 EOF
+# GitHub がリポジトリを作るときに付ける既定のラベル。種別ラベルと役割が重なるので消す。
+# 後から自分で作ったラベルを消さないよう、初期化の前にだけ行う
+if [ "$needs_init" = true ]; then
+  existing=$(gh label list --repo "$repo" --limit 200 --json name -q '.[].name')
+  for label in bug documentation duplicate enhancement "good first issue" "help wanted" invalid question wontfix accessibility; do
+    if printf '%s\n' "$existing" | grep -qxF "$label"; then
+      gh label delete "$label" --repo "$repo" --yes </dev/null >/dev/null
+      echo "  $label を消しました（GitHub の既定ラベル）"
+    fi
+  done
+fi
 
 echo "== ブランチと設定"
 stage_sha=$(gh api "repos/$repo/git/ref/heads/stage" -q .object.sha 2>/dev/null) ||
@@ -67,17 +91,6 @@ if [ "$is_template" = true ]; then
   exit 0
 fi
 
-# リポジトリ名を埋めるファイル。{{REPO}} は owner/name、{{REPO_NAME}} は name に置き換える
-files="CLAUDE.md .claude/rules/ai-workflow.md .github/claude-routine-prompt.md"
-branch=chore/init-from-template
-title="chore: テンプレートから初期化する"
-
-# 初期化の PR がマージされるまで、origin/stage にはプレースホルダーとテンプレートの README が残っている
-git fetch -q origin stage
-needs_init=false
-# shellcheck disable=SC2086
-git grep -qF '{{REPO' origin/stage -- $files && needs_init=true
-git show origin/stage:README.md | grep -q '^<!-- template-readme' && needs_init=true
 if [ "$needs_init" = false ]; then
   echo "== ファイル: 初期化済み"
   exit 0
